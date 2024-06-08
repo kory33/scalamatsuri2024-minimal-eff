@@ -4,6 +4,7 @@ import cats.Monad
 import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 import org.http4s.client.Client
+import scala.util.NotGiven
 
 object EffLibrary {
   enum Executable[Instr[_], ExitCode]:
@@ -48,6 +49,12 @@ object EffLibrary {
   //       You can think of `Include` as a dual to `Decompose` typeclass, in a sense that
   //        - `Decompose` allows us to do deep pattern matching on the instruction tree (making it a generalized ∨-elim), while
   //        - `Include` allows us to do deep construction of the instruction tree (making it a generalized ∨-intro).
+  //
+  //       To be extremely precise and pedantic, `Include` is not a perfect dual to `Decompose`
+  //       since we only defined strict instances for `Decompose`
+  //       (i.e. `Decompose.Aux[I, I, [A] =>> Nothing]` is not available), but we have
+  //       the non-strict inclusion instance `identity` for `Include` (this is so that `asSingleExe` can be used
+  //       even if the instruction we are trying to include is the entire instruction-set tree itself).
   trait Inclusion[SubInstr[_], Instr[_]]:
     def include[A](instr: SubInstr[A]): Instr[A]
 
@@ -66,12 +73,20 @@ object EffLibrary {
       def include[A](instr: SubInstr[A]): (LeftInstr mix SubInstr)[A] =
         EitherK(Right(instr))
 
-    given transitivity[Instr0[_], Instr1[_], Instr2[_]](
-      using i1: Inclusion[Instr0, Instr1],
-      i2: Inclusion[Instr1, Instr2]
-    ): Inclusion[Instr0, Instr2] with
-      def include[A](instr: Instr0[A]): Instr2[A] =
-        i2.include(i1.include(instr))
+    // NOTE: We choose not to define a transitivity instance for `Inclusion`, since
+    //       our `Inclusion` is a non-strict inclusion relation (i.e. `I Includes I` is always available)
+    //       and having a transitivity instance would cause infinite loop in the implicit resolution.
+    given leftNode[SubInstr[_], LeftI[_], RightI[_]](
+      using leftInclusion: Inclusion[SubInstr, LeftI]
+    ): Inclusion[SubInstr, LeftI mix RightI] with
+      def include[A](instr: SubInstr[A]): (LeftI mix RightI)[A] =
+        EitherK(Left(leftInclusion.include(instr)))
+
+    given rightNode[SubInstr[_], LeftI[_], RightI[_]](
+      using rightInclusion: Inclusion[SubInstr, RightI]
+    ): Inclusion[SubInstr, LeftI mix RightI] with
+      def include[A](instr: SubInstr[A]): (LeftI mix RightI)[A] =
+        EitherK(Right(rightInclusion.include(instr)))
   }
 
   // an alias for `Inclusion` typeclass, so that we can read `I Includes F` as "I includes F as a sub-instruction"
@@ -202,5 +217,9 @@ object Example {
 }
 
 @main def main(): Unit = {
-  ???
+  import Example.*
+  import EffLibrary.*
+  val program = for {
+    _ <- LogWithLevel.Info("start").asSingleExe[IO mix LogWithLevel mix HttpGet]
+  } yield ()
 }
