@@ -219,7 +219,31 @@ object Example {
 @main def main(): Unit = {
   import Example.*
   import EffLibrary.*
-  val program = for {
-    _ <- LogWithLevel.Info("start").asSingleExe[IO mix LogWithLevel mix HttpGet]
-  } yield ()
+  type Instr = (IO mix LogWithLevel mix HttpGet)[_]
+  val program: Executable[Instr, Boolean] = {
+    for {
+      time1 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
+      _ <- LogWithLevel.Info("diff checking start").asSingleExe[Instr]
+
+      res1 <- HttpGet.Request("https://example.com/api/v1/resources/1").asSingleExe[Instr]
+      res2 <- HttpGet.Request("https://example.com/api/v1/resources/2").asSingleExe[Instr]
+      hasDifference <- IO { res1.zip(res2).exists { case (a, b) => a != b } }.asSingleExe[Instr]
+
+      time2 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
+      _ <- LogWithLevel.Info(s"diff checking ended: ${time2 - time1}ms").asSingleExe[Instr]
+    } yield hasDifference
+  }
+
+
+  import org.typelevel.log4cats.LoggerFactory
+  import org.typelevel.log4cats.slf4j.Slf4jFactory
+  given LoggerFactory[IO] = Slf4jFactory.create[IO]
+
+  // NOTE: TODO
+  import cats.effect.unsafe.implicits.global
+  import org.http4s.ember.client.EmberClientBuilder
+  val httpClient = EmberClientBuilder.default[IO].build.allocated.unsafeRunSync()._1
+
+  val result = Example.Machine(httpClient).run[Boolean](program)
+  println(s"result: $result")
 }
