@@ -245,5 +245,5 @@ object Example {
   val httpClient = EmberClientBuilder.default[IO].build.allocated.unsafeRunSync()._1
 
   val result = Example.Machine(httpClient).run[Boolean](program)
-  println(s"result: $result")
+  println(s"example.com and example.net are different: $result")
 }
