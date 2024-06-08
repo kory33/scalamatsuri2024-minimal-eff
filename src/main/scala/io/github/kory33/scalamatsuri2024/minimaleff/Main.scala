@@ -219,7 +219,38 @@ object Example {
 @main def main(): Unit = {
   import Example.*
   import EffLibrary.*
-  val program = for {
-    _ <- LogWithLevel.Info("start").asSingleExe[IO mix LogWithLevel mix HttpGet]
-  } yield ()
+  type Instr = (IO mix LogWithLevel mix HttpGet)[_]
+  val program: Executable[Instr, Boolean] = {
+    for {
+      time1 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
+      _ <- LogWithLevel.Info("diff checking start").asSingleExe[Instr]
+
+      res1 <- HttpGet.Request("https://example.com").asSingleExe[Instr]
+      res2 <- HttpGet.Request("https://example.net").asSingleExe[Instr]
+      hasDifference <- IO { res1.zip(res2).exists { case (a, b) => a != b } }.asSingleExe[Instr]
+
+      time2 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
+      _ <- LogWithLevel.Info(s"diff checking ended: ${time2 - time1}ms").asSingleExe[Instr]
+    } yield hasDifference
+  }
+
+  import org.typelevel.log4cats.LoggerFactory
+  import org.typelevel.log4cats.slf4j.Slf4jFactory
+  given LoggerFactory[IO] = Slf4jFactory.create[IO]
+
+  // NOTE: As the machine we built for the talk is an impure machine that `unsafeRunSync`s the compactified `IO`,
+  //       we are leaking the HTTP client here (via `allocated`) and initializing the client
+  //       in an unsafe manner.
+  //
+  //       In practice, unless there is a special reason for not doing so, we should
+  //       "run the `IO` at the very edge of the program". To do so while using the `Machine`,
+  //       the machine must return an `IO[A]` instead of an `A`, and the HTTP client `Resource` should be
+  //       appropriately allocated (through `use`) and shared among many subcomponents,
+  //       completing the `use` when the application actually shuts down.
+  import cats.effect.unsafe.implicits.global
+  import org.http4s.ember.client.EmberClientBuilder
+  val httpClient = EmberClientBuilder.default[IO].build.allocated.unsafeRunSync()._1
+
+  val result = Example.Machine(httpClient).run[Boolean](program)
+  println(s"example.com and example.net are different: $result")
 }
