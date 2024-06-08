@@ -39,7 +39,7 @@ object EffLibrary {
     def map[B](f: A => B): Executable[I, B] = exe.flatMap(a => Executable.Exit(f(a)))
 
   case class EitherK[Instr1[_], Instr2[_], A](value: Either[Instr1[A], Instr2[A]])
-  type mix[F[_], G[_]] = [A] =>> EitherK[F, G, A]
+  infix type mix[F[_], G[_]] = [A] =>> EitherK[F, G, A]
 
   // NOTE: This typeclass is not mentioned in the talk;
   //       an `Inclusion[SI, I]` instance says that "SI is a sub-instruction of I",
