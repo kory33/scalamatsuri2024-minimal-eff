@@ -234,7 +234,6 @@ object Example {
     } yield hasDifference
   }
 
-
   import org.typelevel.log4cats.LoggerFactory
   import org.typelevel.log4cats.slf4j.Slf4jFactory
   given LoggerFactory[IO] = Slf4jFactory.create[IO]
