@@ -225,8 +225,8 @@ object Example {
       time1 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
       _ <- LogWithLevel.Info("diff checking start").asSingleExe[Instr]
 
-      res1 <- HttpGet.Request("https://example.com/api/v1/resources/1").asSingleExe[Instr]
-      res2 <- HttpGet.Request("https://example.com/api/v1/resources/2").asSingleExe[Instr]
+      res1 <- HttpGet.Request("https://example.com").asSingleExe[Instr]
+      res2 <- HttpGet.Request("https://example.net").asSingleExe[Instr]
       hasDifference <- IO { res1.zip(res2).exists { case (a, b) => a != b } }.asSingleExe[Instr]
 
       time2 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
