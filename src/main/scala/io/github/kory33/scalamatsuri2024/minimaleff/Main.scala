@@ -220,19 +220,17 @@ object Example {
   import Example.*
   import EffLibrary.*
   type Instr = (IO mix LogWithLevel mix HttpGet)[_]
-  val program: Executable[Instr, Boolean] = {
-    for {
-      time1 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
-      _ <- LogWithLevel.Info("diff checking start").asSingleExe[Instr]
+  val program: Executable[Instr, Boolean] = for {
+    time1 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
+    _ <- LogWithLevel.Info("diff checking start").asSingleExe[Instr]
 
-      res1 <- HttpGet.Request("https://example.com").asSingleExe[Instr]
-      res2 <- HttpGet.Request("https://example.net").asSingleExe[Instr]
-      hasDifference <- IO { res1.zip(res2).exists { case (a, b) => a != b } }.asSingleExe[Instr]
+    res1 <- HttpGet.Request("https://example.com").asSingleExe[Instr]
+    res2 <- HttpGet.Request("https://example.net").asSingleExe[Instr]
+    hasDifference <- IO { res1.zip(res2).exists { case (a, b) => a != b } }.asSingleExe[Instr]
 
-      time2 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
-      _ <- LogWithLevel.Info(s"diff checking ended: ${time2 - time1}ms").asSingleExe[Instr]
-    } yield hasDifference
-  }
+    time2 <- IO { System.currentTimeMillis() }.asSingleExe[Instr]
+    _ <- LogWithLevel.Info(s"diff checking ended: ${time2 - time1}ms").asSingleExe[Instr]
+  } yield hasDifference
 
   import org.typelevel.log4cats.LoggerFactory
   import org.typelevel.log4cats.slf4j.Slf4jFactory
