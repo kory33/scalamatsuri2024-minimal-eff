@@ -9,7 +9,7 @@ scalacOptions ++= Seq(
   "-Ykind-projector:underscores"
 )
 
-val http4sVersion = "1.0.0-M41"
+val http4sVersion = "1.0.0-M42"
 
 libraryDependencies ++= Seq(
   "org.http4s" %% "http4s-ember-client" % http4sVersion,
